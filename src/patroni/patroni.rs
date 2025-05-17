@@ -11,8 +11,10 @@ pub struct Patroni {
 pub struct ClusterInfo {
     pub scope: String,
     pub node_name: String,
+    pub leader_node_name: String,
     pub members: Vec<NodeStatus>,
     pub members_map: HashMap<String, NodeStatus>,
+    pub patroni_data: PatroniData,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -33,7 +35,6 @@ pub struct NodeStatus {
 #[derive(Debug, Clone)]
 pub struct PatroniData {
     pub role: String,
-    pub leader: String,
     pub state: String,
     pub scope: String,
     pub node_name: String
@@ -53,17 +54,24 @@ impl Patroni {
     pub fn get_cluster_info(&self) -> ClusterInfo {
         let nodes = self.get_cluster_nodes();
         let mut members = HashMap::new();
+        let mut leader_node_name: String = "-".to_string();
+
         for node in nodes.clone() {
-            members.insert(node.name.clone(), node);
+            members.insert(node.name.clone(), node.clone());
+            if node.role == "leader" {
+                leader_node_name = node.name.clone();
+            }
         }
 
         let patroni_info = self.get_patroni_info();
 
         ClusterInfo{
-            scope: patroni_info.scope,
-            node_name: patroni_info.node_name,
+            scope: patroni_info.scope.clone(),
+            node_name: patroni_info.node_name.clone(),
+            leader_node_name: leader_node_name,
             members: nodes,
             members_map: members,
+            patroni_data: patroni_info,
         }
     }
 
@@ -99,7 +107,6 @@ impl Patroni {
 
         PatroniData {
             role: "-".to_string(),
-            leader: "-".to_string(),
             state: "-".to_string(),
             scope: "-".to_string(),
             node_name: "-".to_string(),
@@ -109,7 +116,6 @@ impl Patroni {
     pub fn parse_patroni_json(&self, json: Value) -> PatroniData {
         PatroniData {
             role: json["role"].as_str().unwrap_or("-").to_string(),
-            leader: json["leader"].as_str().unwrap_or("-").to_string(),
             state: json["state"].as_str().unwrap_or("-").to_string(),
             scope: json["patroni"]["scope"].as_str().unwrap_or("-").to_string(),
             node_name: json["patroni"]["name"].as_str().unwrap_or("-").to_string(),

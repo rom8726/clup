@@ -75,14 +75,17 @@ impl UI {
 
         let header1 = Paragraph::new(format!(
             "Scope: {}    State: {}",
-            data.patroni_data.scope, data.patroni_data.state,
+            data.cluster_data.scope, data.cluster_data.patroni_data.state,
         ))
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(header1, chunks[0]);
 
         let header2 = Paragraph::new(format!(
             "Host: {} ({})    Role: {}    Leader: {}",
-            data.hostname, data.ip, data.patroni_data.role, data.patroni_data.leader
+            data.hostname,
+            data.ip,
+            data.cluster_data.patroni_data.role,
+            data.cluster_data.leader_node_name
         ))
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(header2, chunks[1]);

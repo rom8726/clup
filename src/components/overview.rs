@@ -2,7 +2,7 @@ use serde_json::Value;
 use std::net::UdpSocket;
 use std::process::Command;
 use ureq;
-use crate::patroni::patroni::{Patroni, PatroniData};
+use crate::patroni::patroni::{ClusterInfo, Patroni};
 
 pub struct Overview {
     pub patroni_srv: Patroni
@@ -11,7 +11,7 @@ pub struct Overview {
 pub struct OverviewData {
     pub hostname: String,
     pub ip: String,
-    pub patroni_data: PatroniData,
+    pub cluster_data: ClusterInfo,
     pub statuses: Vec<(String, String)>, // (name, "UP"/"DOWN")
     pub errors: Vec<(String, usize)>,    // (name, count)
 }
@@ -26,14 +26,14 @@ impl Overview {
     pub fn get_overview(&self) -> OverviewData {
         let hostname = self.get_hostname();
         let ip = self.get_local_ip();
-        let patroni_data = self.patroni_srv.get_patroni_info();
+        let cluster_data = self.patroni_srv.get_cluster_info();
         let statuses = self.check_services(&["patroni", "haproxy", "pgbouncer", "keepalived"]);
         let errors = self.count_errors(&["patroni", "haproxy", "pgbouncer", "keepalived"]);
 
         OverviewData {
             hostname,
             ip,
-            patroni_data,
+            cluster_data,
             statuses,
             errors,
         }
