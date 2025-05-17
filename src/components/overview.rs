@@ -84,7 +84,7 @@ impl Overview {
                     Ok(output) => {
                         let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
                         text.lines()
-                            .filter(|line| line.contains("error") || line.contains("warn"))
+                            .filter(|line| line.contains("error") || line.contains("fatal"))
                             .count()
                     }
                     _ => 0,
