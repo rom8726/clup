@@ -44,8 +44,8 @@ fn draw_overview<B: Backend>(f: &mut Frame, area: ratatui::layout::Rect) {
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3),
-            Constraint::Length(3),
+            Constraint::Length(2),
+            Constraint::Length(2),
             Constraint::Min(5),
             Constraint::Length(6),
         ])
