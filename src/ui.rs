@@ -127,7 +127,7 @@ impl UI {
         let inner_area = outer_block.inner(area);
         f.render_widget(outer_block, area);
 
-        let rows: Vec<Row> = data.members.iter().map(|(node_name, node)| {
+        let rows: Vec<Row> = data.members.iter().map(|node| {
             let color = match node.role.as_str() {
                 "Leader" => Color::Green,
                 "Replica" => Color::Cyan,

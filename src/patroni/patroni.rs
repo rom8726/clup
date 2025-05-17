@@ -11,7 +11,8 @@ pub struct Patroni {
 pub struct ClusterInfo {
     pub scope: String,
     pub node_name: String,
-    pub members: HashMap<String, NodeStatus>,
+    pub members: Vec<NodeStatus>,
+    pub members_map: HashMap<String, NodeStatus>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -52,7 +53,7 @@ impl Patroni {
     pub fn get_cluster_info(&self) -> ClusterInfo {
         let nodes = self.get_cluster_nodes();
         let mut members = HashMap::new();
-        for node in nodes {
+        for node in nodes.clone() {
             members.insert(node.name.clone(), node);
         }
 
@@ -61,7 +62,8 @@ impl Patroni {
         ClusterInfo{
             scope: patroni_info.scope,
             node_name: patroni_info.node_name,
-            members,
+            members: nodes,
+            members_map: members,
         }
     }
 
