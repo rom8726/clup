@@ -1,6 +1,7 @@
 mod app;
 mod components;
 mod ui;
+mod patroni;
 
 use crate::app::App;
 use crossterm::execute;
