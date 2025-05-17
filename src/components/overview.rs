@@ -1,11 +1,11 @@
+use crate::patroni::patroni::{ClusterInfo, Patroni};
 use serde_json::Value;
 use std::net::UdpSocket;
 use std::process::Command;
 use ureq;
-use crate::patroni::patroni::{ClusterInfo, Patroni};
 
 pub struct Overview {
-    pub patroni_srv: Patroni
+    pub patroni_srv: Patroni,
 }
 
 pub struct OverviewData {
@@ -18,9 +18,7 @@ pub struct OverviewData {
 
 impl Overview {
     pub fn new(patroni_srv: Patroni) -> Self {
-        Overview{
-            patroni_srv
-        }
+        Overview { patroni_srv }
     }
 
     pub fn get_overview(&self) -> OverviewData {

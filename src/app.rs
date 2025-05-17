@@ -1,12 +1,12 @@
-use std::cmp::PartialEq;
-use crate::ui::{UI};
-use ratatui::Terminal;
-use ratatui::backend::Backend;
-use crate::components::overview::Overview;
 use crate::components::cluster::Cluster;
 use crate::components::logs::Logs;
+use crate::components::overview::Overview;
 use crate::patroni::patroni::Patroni;
 use crate::ui;
+use crate::ui::UI;
+use ratatui::Terminal;
+use ratatui::backend::Backend;
+use std::cmp::PartialEq;
 
 #[derive(Copy, Clone)]
 pub enum Tab {
@@ -67,22 +67,30 @@ impl App {
                             KeyCode::Left if self.current_tab == Tab::Logs => {
                                 self.log_focus_right = false;
                             }
-                            KeyCode::Down | KeyCode::Char('j') if self.current_tab == Tab::Logs && !self.log_focus_right => {
+                            KeyCode::Down | KeyCode::Char('j')
+                                if self.current_tab == Tab::Logs && !self.log_focus_right =>
+                            {
                                 if self.log_selected < ui::SERVICES.len() - 1 {
                                     self.log_selected += 1;
                                     self.log_scroll = 0;
                                 }
                             }
-                            KeyCode::Up | KeyCode::Char('k') if self.current_tab == Tab::Logs && !self.log_focus_right => {
+                            KeyCode::Up | KeyCode::Char('k')
+                                if self.current_tab == Tab::Logs && !self.log_focus_right =>
+                            {
                                 if self.log_selected > 0 {
                                     self.log_selected -= 1;
                                     self.log_scroll = 0;
                                 }
                             }
-                            KeyCode::Down | KeyCode::Char('j') if self.current_tab == Tab::Logs && self.log_focus_right => {
+                            KeyCode::Down | KeyCode::Char('j')
+                                if self.current_tab == Tab::Logs && self.log_focus_right =>
+                            {
                                 self.log_scroll += 1;
                             }
-                            KeyCode::Up | KeyCode::Char('k') if self.current_tab == Tab::Logs && self.log_focus_right => {
+                            KeyCode::Up | KeyCode::Char('k')
+                                if self.current_tab == Tab::Logs && self.log_focus_right =>
+                            {
                                 if self.log_scroll > 0 {
                                     self.log_scroll -= 1;
                                 }

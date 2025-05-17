@@ -1,7 +1,6 @@
 use std::process::Command;
 
-pub struct Logs {
-}
+pub struct Logs {}
 
 impl Logs {
     pub fn new() -> Self {

@@ -1,5 +1,7 @@
 use crate::app::{App, Tab};
-use crate::components::overview::{OverviewData, Overview};
+use crate::components::cluster::Cluster;
+use crate::components::logs::Logs;
+use crate::components::overview::{Overview, OverviewData};
 use ratatui::backend::Backend;
 use ratatui::style::Style;
 use ratatui::text::Line;
@@ -9,8 +11,6 @@ use ratatui::{
     style::*,
     widgets::*,
 };
-use crate::components::cluster::Cluster;
-use crate::components::logs::Logs;
 
 pub const SERVICES: [&str; 4] = ["patroni", "haproxy", "pgbouncer", "keepalived"];
 
@@ -43,15 +43,21 @@ impl UI {
                 .map(Line::from)
                 .collect::<Vec<Line>>(),
         )
-            .block(Block::default().borders(Borders::ALL).title("Navigation"))
-            .highlight_style(Style::default().fg(Color::Yellow))
-            .select(app.current_tab as usize);
+        .block(Block::default().borders(Borders::ALL).title("Navigation"))
+        .highlight_style(Style::default().fg(Color::Yellow))
+        .select(app.current_tab as usize);
         frame.render_widget(tabs, chunks[0]);
 
         match app.current_tab {
             Tab::Overview => self.draw_overview::<B>(frame, chunks[1]),
             Tab::Cluster => self.draw_cluster::<B>(frame, chunks[1]),
-            Tab::Logs => self.draw_logs::<B>(frame, chunks[1], app.log_selected, app.log_scroll, app.log_focus_right),
+            Tab::Logs => self.draw_logs::<B>(
+                frame,
+                chunks[1],
+                app.log_selected,
+                app.log_scroll,
+                app.log_focus_right,
+            ),
             Tab::Actions => self.draw_actions::<B>(frame, chunks[1]),
         }
     }
@@ -81,7 +87,7 @@ impl UI {
             "Scope: {}    State: {}",
             data.cluster_data.scope, data.cluster_data.patroni_data.state,
         ))
-            .style(Style::default().fg(Color::Cyan));
+        .style(Style::default().fg(Color::Cyan));
         frame.render_widget(header1, chunks[0]);
 
         let header2 = Paragraph::new(format!(
@@ -91,49 +97,54 @@ impl UI {
             data.cluster_data.patroni_data.role,
             data.cluster_data.leader_node_name
         ))
-            .style(Style::default().fg(Color::Cyan));
+        .style(Style::default().fg(Color::Cyan));
         frame.render_widget(header2, chunks[1]);
 
         let rows: Vec<Row> = data
             .statuses
             .iter()
             .map(|(svc, status)| {
-                let error_count = data.errors
+                let error_count = data
+                    .errors
                     .iter()
                     .find(|(error_svc, _)| error_svc == svc)
                     .map(|(_, count)| count)
                     .unwrap_or(&0);
-            
-            let status_color = if status == "UP" {
-                Color::Green
-            } else {
-                Color::Red
-            };
 
-            Row::new(vec![
-                Cell::from(svc.clone()),
-                Cell::from(status.clone()).style(Style::default().fg(status_color)),
-                Cell::from(error_count.to_string()),
-            ])
-        })
-        .collect();
+                let status_color = if status == "UP" {
+                    Color::Green
+                } else {
+                    Color::Red
+                };
 
-    let combined_table = Table::new(
-        rows,
-        &[
-            Constraint::Length(15),
-            Constraint::Length(8),
-            Constraint::Length(8),
-        ],
-    )
-    .header(
-        Row::new(vec!["Component", "Status", "Errors"])
-            .style(Style::default().fg(Color::Yellow))
-    )
-    .block(Block::default().borders(Borders::ALL).title("Services Status"));
-    
-    frame.render_widget(combined_table, chunks[2]);
-}
+                Row::new(vec![
+                    Cell::from(svc.clone()),
+                    Cell::from(status.clone()).style(Style::default().fg(status_color)),
+                    Cell::from(error_count.to_string()),
+                ])
+            })
+            .collect();
+
+        let combined_table = Table::new(
+            rows,
+            &[
+                Constraint::Length(15),
+                Constraint::Length(8),
+                Constraint::Length(8),
+            ],
+        )
+        .header(
+            Row::new(vec!["Component", "Status", "Errors"])
+                .style(Style::default().fg(Color::Yellow)),
+        )
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Services Status"),
+        );
+
+        frame.render_widget(combined_table, chunks[2]);
+    }
 
     fn draw_cluster<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let data = self.cluster_srv.get_cluster_info();
@@ -144,27 +155,31 @@ impl UI {
         let inner_area = outer_block.inner(area);
         frame.render_widget(outer_block, area);
 
-        let rows: Vec<Row> = data.members.iter().map(|node| {
-            let color = match node.role.as_str() {
-                "leader" => Color::Green,
-                "replica" => Color::Cyan,
-                _ => Color::Yellow,
-            };
+        let rows: Vec<Row> = data
+            .members
+            .iter()
+            .map(|node| {
+                let color = match node.role.as_str() {
+                    "leader" => Color::Green,
+                    "replica" => Color::Cyan,
+                    _ => Color::Yellow,
+                };
 
-            let status_color = if node.state == "running" {
-                Color::Green
-            } else {
-                Color::Cyan
-            };
+                let status_color = if node.state == "running" {
+                    Color::Green
+                } else {
+                    Color::Cyan
+                };
 
-            Row::new(vec![
-                Cell::from(node.name.clone()),
-                Cell::from(node.role.clone()).style(Style::default().fg(color)),
-                Cell::from(node.state.clone()).style(Style::default().fg(status_color)),
-                Cell::from(node.host.clone()),
-                Cell::from(node.lag.map_or("-".to_string(), |l| l.to_string())),
-            ])
-        }).collect();
+                Row::new(vec![
+                    Cell::from(node.name.clone()),
+                    Cell::from(node.role.clone()).style(Style::default().fg(color)),
+                    Cell::from(node.state.clone()).style(Style::default().fg(status_color)),
+                    Cell::from(node.host.clone()),
+                    Cell::from(node.lag.map_or("-".to_string(), |l| l.to_string())),
+                ])
+            })
+            .collect();
 
         let table = Table::new(rows, &[Constraint::Length(15), Constraint::Length(8)])
             .block(Block::default().borders(Borders::ALL).title("Nodes"))
@@ -175,8 +190,12 @@ impl UI {
                 Constraint::Length(16),
                 Constraint::Length(6),
             ])
-            .header(Row::new(["Name", "Role", "State", "Host", "Lag"])
-                .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+            .header(
+                Row::new(["Name", "Role", "State", "Host", "Lag"]).style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
             );
 
         frame.render_widget(table, inner_area);
@@ -190,31 +209,30 @@ impl UI {
         scroll: u16,
         focus_right: bool,
     ) {
-        let block = Block::default()
-            .title("Logs")
-            .borders(Borders::ALL);
+        let block = Block::default().title("Logs").borders(Borders::ALL);
         let inner = block.inner(area);
         frame.render_widget(block, area);
 
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Length(20),
-                Constraint::Min(1)
-            ])
+            .constraints([Constraint::Length(20), Constraint::Min(1)])
             .split(inner);
 
-        let items: Vec<ListItem> = SERVICES.iter().enumerate().map(|(i, svc)| {
-            let style = if i == selected && !focus_right {
-                Style::default().fg(Color::Black).bg(Color::White)
-            } else {
-                Style::default()
-            };
-            ListItem::new(svc.to_string()).style(style)
-        }).collect();
+        let items: Vec<ListItem> = SERVICES
+            .iter()
+            .enumerate()
+            .map(|(i, svc)| {
+                let style = if i == selected && !focus_right {
+                    Style::default().fg(Color::Black).bg(Color::White)
+                } else {
+                    Style::default()
+                };
+                ListItem::new(svc.to_string()).style(style)
+            })
+            .collect();
 
-        let svc_list = List::new(items)
-            .block(Block::default().title("Services").borders(Borders::ALL));
+        let svc_list =
+            List::new(items).block(Block::default().title("Services").borders(Borders::ALL));
         frame.render_widget(svc_list, chunks[0]);
 
         let selected_service = SERVICES[selected];
@@ -228,10 +246,11 @@ impl UI {
         };
 
         let logs = Paragraph::new(text)
-            .block(Block::default().
-                title(format!("{} log", selected_service)).
-                borders(Borders::ALL).
-                border_style(border_style),
+            .block(
+                Block::default()
+                    .title(format!("{} log", selected_service))
+                    .borders(Borders::ALL)
+                    .border_style(border_style),
             )
             .scroll((scroll, 0))
             .wrap(Wrap { trim: false });

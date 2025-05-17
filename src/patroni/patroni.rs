@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct Patroni {
-    pub addr: String
+    pub addr: String,
 }
 
 #[derive(Debug, Clone)]
@@ -37,14 +37,12 @@ pub struct PatroniData {
     pub role: String,
     pub state: String,
     pub scope: String,
-    pub node_name: String
+    pub node_name: String,
 }
 
 impl Patroni {
     pub fn new(addr: String) -> Self {
-        Patroni{
-            addr
-        }
+        Patroni { addr }
     }
 
     fn base_url(&self) -> String {
@@ -65,7 +63,7 @@ impl Patroni {
 
         let patroni_info = self.get_patroni_info();
 
-        ClusterInfo{
+        ClusterInfo {
             scope: patroni_info.scope.clone(),
             node_name: patroni_info.node_name.clone(),
             leader_node_name: leader_node_name,
