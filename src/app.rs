@@ -1,6 +1,6 @@
+use crate::ui::draw_ui;
 use ratatui::Terminal;
 use ratatui::backend::Backend;
-use crate::ui::draw_ui;
 
 #[derive(Copy, Clone)]
 pub enum Tab {

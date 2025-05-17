@@ -1,7 +1,7 @@
-use std::process::Command;
-use std::net::{UdpSocket};
-use ureq;
 use serde_json::Value;
+use std::net::UdpSocket;
+use std::process::Command;
+use ureq;
 
 pub struct OverviewData {
     pub hostname: String,
@@ -35,7 +35,10 @@ pub fn get_overview() -> OverviewData {
 }
 
 fn get_hostname() -> String {
-    hostname::get().unwrap_or_default().to_string_lossy().to_string()
+    hostname::get()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string()
 }
 
 fn get_local_ip() -> String {
@@ -48,28 +51,27 @@ fn get_local_ip() -> String {
         .unwrap_or_else(|_| "unknown".into())
 }
 
+fn parse_patroni_json(json: Value) -> PatroniData {
+    PatroniData {
+        role: json["role"].as_str().unwrap_or("-").to_string(),
+        leader: json["leader"].as_str().unwrap_or("-").to_string(),
+        state: json["state"].as_str().unwrap_or("-").to_string(),
+        scope: json["patroni"]["scope"].as_str().unwrap_or("-").to_string(),
+    }
+}
+
 fn get_patroni_info() -> PatroniData {
     let url = "http://127.0.0.1:8008";
-    
+
     match ureq::get(url).call() {
         Ok(resp) => {
             if let Ok(json) = resp.into_json::<Value>() {
-                return PatroniData{
-                    role: json["role"].as_str().unwrap_or("-").to_string(),
-                    leader: json["leader"].as_str().unwrap_or("-").to_string(),
-                    state: json["state"].as_str().unwrap_or("-").to_string(),
-                    scope: json["patroni"]["scope"].as_str().unwrap_or("-").to_string(),
-                };
+                return parse_patroni_json(json);
             }
         }
         Err(ureq::Error::Status(503, resp)) => {
             if let Ok(json) = resp.into_json::<Value>() {
-                return PatroniData{
-                    role: json["role"].as_str().unwrap_or("-").to_string(),
-                    leader: json["leader"].as_str().unwrap_or("-").to_string(),
-                    state: json["state"].as_str().unwrap_or("-").to_string(),
-                    scope: json["patroni"]["scope"].as_str().unwrap_or("-").to_string(),
-                };
+                return parse_patroni_json(json);
             }
         }
         Err(_) => {}
@@ -84,35 +86,41 @@ fn get_patroni_info() -> PatroniData {
 }
 
 fn check_services(names: &[&str]) -> Vec<(String, String)> {
-    names.iter().map(|&s| {
-        let out = Command::new("systemctl")
-            .arg("is-active")
-            .arg(format!("{}.service", s))
-            .output();
+    names
+        .iter()
+        .map(|&s| {
+            let out = Command::new("systemctl")
+                .arg("is-active")
+                .arg(format!("{}.service", s))
+                .output();
 
-        let status = match out {
-            Ok(output) if output.status.success() => "UP",
-            _ => "DOWN",
-        };
-        (s.to_string(), status.to_string())
-    }).collect()
+            let status = match out {
+                Ok(output) if output.status.success() => "UP",
+                _ => "DOWN",
+            };
+            (s.to_string(), status.to_string())
+        })
+        .collect()
 }
 
 fn count_errors(names: &[&str]) -> Vec<(String, usize)> {
-    names.iter().map(|&s| {
-        let out = Command::new("journalctl")
-            .args(["-u", s, "-n", "300", "--no-pager"])
-            .output();
+    names
+        .iter()
+        .map(|&s| {
+            let out = Command::new("journalctl")
+                .args(["-u", s, "-n", "300", "--no-pager"])
+                .output();
 
-        let count = match out {
-            Ok(output) => {
-                let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
-                text.lines()
-                    .filter(|line| line.contains("error") || line.contains("warn"))
-                    .count()
-            }
-            _ => 0,
-        };
-        (s.to_string(), count)
-    }).collect()
+            let count = match out {
+                Ok(output) => {
+                    let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
+                    text.lines()
+                        .filter(|line| line.contains("error") || line.contains("warn"))
+                        .count()
+                }
+                _ => 0,
+            };
+            (s.to_string(), count)
+        })
+        .collect()
 }

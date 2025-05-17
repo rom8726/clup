@@ -1,13 +1,13 @@
 mod app;
-mod ui;
 mod components;
+mod ui;
 
 use crate::app::App;
-use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
 use crossterm::execute;
-use std::io::{stdout, Result};
-use ratatui::backend::CrosstermBackend;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
+use std::io::{Result, stdout};
 
 #[tokio::main]
 async fn main() -> Result<()> {
