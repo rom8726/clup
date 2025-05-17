@@ -133,14 +133,16 @@ impl UI {
         let rows: Vec<Row> = data
             .components
             .iter()
-            .map(|component| {
-                let status_text = if component.up { "UP" } else { "DOWN" };
-                let status_color = if component.up { Color::Green } else { Color::Red };
+            .map(|c| {
+                let status_text = if c.up { "UP" } else { "DOWN" };
+                let status_color = if c.up { Color::Green } else { Color::Red };
 
                 Row::new(vec![
-                    Cell::from(component.name.clone()),
+                    Cell::from(c.name.clone()),
                     Cell::from(status_text).style(Style::default().fg(status_color)),
-                    Cell::from(component.errors.to_string()),
+                    Cell::from(c.errors.to_string()),
+                    Cell::from(c.uptime.clone()),
+                    Cell::from(c.version.clone()),
                 ])
             })
             .collect();
@@ -151,17 +153,19 @@ impl UI {
                 Constraint::Length(15),
                 Constraint::Length(8),
                 Constraint::Length(8),
+                Constraint::Length(25),
+                Constraint::Length(18),
             ],
         )
-        .header(
-            Row::new(["Component", "Status", "Errors"])
-                .style(Style::default().fg(Color::Yellow)),
-        )
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Services Status"),
-        );
+            .header(
+                Row::new(["Component", "Status", "Errors", "Uptime", "Version"])
+                    .style(Style::default().fg(Color::Yellow)),
+            )
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Services Status"),
+            );
 
         frame.render_widget(table, table_area);
     }
