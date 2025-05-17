@@ -131,31 +131,21 @@ impl UI {
         table_area: ratatui::layout::Rect,
     ) {
         let rows: Vec<Row> = data
-            .statuses
+            .components
             .iter()
-            .map(|(svc, status)| {
-                let error_count = data
-                    .errors
-                    .iter()
-                    .find(|(error_svc, _)| error_svc == svc)
-                    .map(|(_, count)| count)
-                    .unwrap_or(&0);
-
-                let status_color = if status == "UP" {
-                    Color::Green
-                } else {
-                    Color::Red
-                };
+            .map(|component| {
+                let status_text = if component.up { "UP" } else { "DOWN" };
+                let status_color = if component.up { Color::Green } else { Color::Red };
 
                 Row::new(vec![
-                    Cell::from(svc.clone()),
-                    Cell::from(status.clone()).style(Style::default().fg(status_color)),
-                    Cell::from(error_count.to_string()),
+                    Cell::from(component.name.clone()),
+                    Cell::from(status_text).style(Style::default().fg(status_color)),
+                    Cell::from(component.errors.to_string()),
                 ])
             })
             .collect();
 
-        let combined_table = Table::new(
+        let table = Table::new(
             rows,
             &[
                 Constraint::Length(15),
@@ -164,7 +154,7 @@ impl UI {
             ],
         )
         .header(
-            Row::new(vec!["Component", "Status", "Errors"])
+            Row::new(["Component", "Status", "Errors"])
                 .style(Style::default().fg(Color::Yellow)),
         )
         .block(
@@ -173,7 +163,7 @@ impl UI {
                 .title("Services Status"),
         );
 
-        frame.render_widget(combined_table, table_area);
+        frame.render_widget(table, table_area);
     }
 
     fn draw_overview_footer<B: Backend>(

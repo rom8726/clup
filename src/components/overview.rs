@@ -12,8 +12,13 @@ pub struct OverviewData {
     pub hostname: String,
     pub ip: String,
     pub cluster_data: ClusterInfo,
-    pub statuses: Vec<(String, String)>, // (name, "UP"/"DOWN")
-    pub errors: Vec<(String, usize)>,    // (name, count)
+    pub components: Vec<ComponentStatus>,
+}
+
+pub struct ComponentStatus {
+    pub name: String,
+    pub up: bool,
+    pub errors: u32,
 }
 
 impl Overview {
@@ -25,15 +30,18 @@ impl Overview {
         let hostname = self.get_hostname();
         let ip = self.get_local_ip();
         let cluster_data = self.patroni_srv.get_cluster_info();
-        let statuses = self.check_services(&["patroni", "haproxy", "pgbouncer", "keepalived"]);
-        let errors = self.count_errors(&["patroni", "haproxy", "pgbouncer", "keepalived"]);
+        let components = self.collect_component_statuses(&[
+            "patroni",
+            "haproxy",
+            "pgbouncer",
+            "keepalived",
+        ]);
 
         OverviewData {
             hostname,
             ip,
             cluster_data,
-            statuses,
-            errors,
+            components,
         }
     }
 
@@ -54,42 +62,32 @@ impl Overview {
             .unwrap_or_else(|_| "unknown".into())
     }
 
-    fn check_services(&self, names: &[&str]) -> Vec<(String, String)> {
+    fn collect_component_statuses(&self, names: &[&str]) -> Vec<ComponentStatus> {
         names
             .iter()
-            .map(|&s| {
-                let out = Command::new("systemctl")
-                    .arg("is-active")
-                    .arg(format!("{}.service", s))
-                    .output();
+            .map(|&svc| {
+                let up = Command::new("systemctl")
+                    .args(["is-active", &format!("{svc}.service")])
+                    .output()
+                    .map_or(false, |o| o.status.success());
+                
+                let errors = Command::new("journalctl")
+                    .args(["-u", svc, "-n", "300", "--no-pager"])
+                    .output()
+                    .map(|o| {
+                        String::from_utf8_lossy(&o.stdout)
+                            .to_lowercase()
+                            .lines()
+                            .filter(|l| l.contains("error") || l.contains("fatal"))
+                            .count() as u32
+                    })
+                    .unwrap_or(0);
 
-                let status = match out {
-                    Ok(output) if output.status.success() => "UP",
-                    _ => "DOWN",
-                };
-                (s.to_string(), status.to_string())
-            })
-            .collect()
-    }
-
-    fn count_errors(&self, names: &[&str]) -> Vec<(String, usize)> {
-        names
-            .iter()
-            .map(|&s| {
-                let out = Command::new("journalctl")
-                    .args(["-u", s, "-n", "300", "--no-pager"])
-                    .output();
-
-                let count = match out {
-                    Ok(output) => {
-                        let text = String::from_utf8_lossy(&output.stdout).to_lowercase();
-                        text.lines()
-                            .filter(|line| line.contains("error") || line.contains("fatal"))
-                            .count()
-                    }
-                    _ => 0,
-                };
-                (s.to_string(), count)
+                ComponentStatus {
+                    name: svc.to_string(),
+                    up,
+                    errors,
+                }
             })
             .collect()
     }
