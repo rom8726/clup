@@ -34,7 +34,7 @@ impl App {
         loop {
             terminal.draw(|frame| self.ui.draw_ui::<B>(frame, self))?;
 
-            if crossterm::event::poll(std::time::Duration::from_millis(200))? {
+            if crossterm::event::poll(std::time::Duration::from_millis(1000))? {
                 if let crossterm::event::Event::Key(key) = crossterm::event::read()? {
                     use crossterm::event::{KeyCode, KeyEventKind};
 
