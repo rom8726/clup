@@ -10,17 +10,22 @@ use ratatui::{
     widgets::*,
 };
 use crate::components::cluster::Cluster;
+use crate::components::logs::Logs;
+
+pub const SERVICES: [&str; 4] = ["patroni", "haproxy", "pgbouncer", "keepalived"];
 
 pub struct UI {
     pub overview_srv: Overview,
-    pub cluster_srv: Cluster
+    pub cluster_srv: Cluster,
+    pub logs_srv: Logs,
 }
 
 impl UI {
-    pub fn new(overview_srv: Overview, cluster_srv: Cluster) -> Self {
+    pub fn new(overview_srv: Overview, cluster_srv: Cluster, logs_srv: Logs) -> Self {
         UI {
             overview_srv,
-            cluster_srv
+            cluster_srv,
+            logs_srv,
         }
     }
 
@@ -46,7 +51,7 @@ impl UI {
         match app.current_tab {
             Tab::Overview => self.draw_overview::<B>(frame, chunks[1]),
             Tab::Cluster => self.draw_cluster::<B>(frame, chunks[1]),
-            Tab::Logs => self.draw_logs::<B>(frame, chunks[1]),
+            Tab::Logs => self.draw_logs::<B>(frame, chunks[1], app.log_selected),
             Tab::Actions => self.draw_actions::<B>(frame, chunks[1]),
         }
     }
@@ -168,9 +173,44 @@ impl UI {
         frame.render_widget(table, inner_area);
     }
 
-    fn draw_logs<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        let block = Block::default().title("Logs").borders(Borders::ALL);
+    fn draw_logs<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect, selected: usize) {
+        let block = Block::default()
+            .title("Logs")
+            .borders(Borders::ALL);
+        let inner = block.inner(area);
         frame.render_widget(block, area);
+
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Length(20),
+                Constraint::Min(1)
+            ])
+            .split(inner);
+
+        let items: Vec<ListItem> = SERVICES.iter().enumerate().map(|(i, svc)| {
+            let style = if i == selected {
+                Style::default().fg(Color::Black).bg(Color::White)
+            } else {
+                Style::default()
+            };
+            ListItem::new(svc.to_string()).style(style)
+        }).collect();
+
+        let svc_list = List::new(items)
+            .block(Block::default().title("Services").borders(Borders::ALL));
+        frame.render_widget(svc_list, chunks[0]);
+
+        let selected_service = SERVICES[selected];
+        let lines = self.logs_srv.read_logs(selected_service, 40);
+        let text: Vec<Line> = lines.iter().map(|l| Line::from(l.clone())).collect();
+
+        let logs = Paragraph::new(text)
+            .block(Block::default().title(format!("{} log", selected_service)).borders(Borders::ALL))
+            .scroll((0, 0))
+            .wrap(Wrap { trim: false });
+
+        frame.render_widget(logs, chunks[1]);
     }
 
     fn draw_actions<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
