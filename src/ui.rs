@@ -74,7 +74,6 @@ impl UI {
                 Constraint::Length(2),
                 Constraint::Length(2),
                 Constraint::Min(5),
-                Constraint::Length(6),
             ])
             .split(inner_area);
 
@@ -99,32 +98,42 @@ impl UI {
             .statuses
             .iter()
             .map(|(svc, status)| {
-                let color = if status == "UP" {
-                    Color::Green
-                } else {
-                    Color::Red
-                };
-                Row::new(vec![
-                    Cell::from(svc.clone()),
-                    Cell::from(status.clone()).style(Style::default().fg(color)),
-                ])
-            })
-            .collect();
+                let error_count = data.errors
+                    .iter()
+                    .find(|(error_svc, _)| error_svc == svc)
+                    .map(|(_, count)| count)
+                    .unwrap_or(&0);
+            
+            let status_color = if status == "UP" {
+                Color::Green
+            } else {
+                Color::Red
+            };
 
-        let service_table = Table::new(rows, &[Constraint::Length(15), Constraint::Length(8)])
-            .block(Block::default().borders(Borders::ALL).title("Services"));
-        frame.render_widget(service_table, chunks[2]);
+            Row::new(vec![
+                Cell::from(svc.clone()),
+                Cell::from(status.clone()).style(Style::default().fg(status_color)),
+                Cell::from(error_count.to_string()),
+            ])
+        })
+        .collect();
 
-        let error_rows: Vec<Row> = data
-            .errors
-            .iter()
-            .map(|(svc, count)| Row::new(vec![Cell::from(svc.clone()), Cell::from(count.to_string())]))
-            .collect();
-
-        let error_table = Table::new(error_rows, &[Constraint::Length(15), Constraint::Length(6)])
-            .block(Block::default().borders(Borders::ALL).title("Log Errors"));
-        frame.render_widget(error_table, chunks[3]);
-    }
+    let combined_table = Table::new(
+        rows,
+        &[
+            Constraint::Length(15),
+            Constraint::Length(8),
+            Constraint::Length(8),
+        ],
+    )
+    .header(
+        Row::new(vec!["Component", "Status", "Errors"])
+            .style(Style::default().fg(Color::Yellow))
+    )
+    .block(Block::default().borders(Borders::ALL).title("Services Status"));
+    
+    frame.render_widget(combined_table, chunks[2]);
+}
 
     fn draw_cluster<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let data = self.cluster_srv.get_cluster_info();
