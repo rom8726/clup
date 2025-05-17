@@ -209,7 +209,7 @@ impl UI {
         frame.render_widget(svc_list, chunks[0]);
 
         let selected_service = SERVICES[selected];
-        let lines = self.logs_srv.read_logs(selected_service, 40);
+        let lines = self.logs_srv.read_logs(selected_service, 100);
         let text: Vec<Line> = lines.iter().map(|l| Line::from(l.clone())).collect();
 
         let border_style = if focus_right {
