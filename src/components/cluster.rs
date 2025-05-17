@@ -12,6 +12,9 @@ impl Cluster {
     }
 
     pub fn get_cluster_info(&self) -> ClusterInfo {
-        self.patroni_srv.get_cluster_info()
+        let mut info = self.patroni_srv.get_cluster_info();
+        info.members.sort_by_key(|node| node.name.clone());
+        
+        info
     }
 }
