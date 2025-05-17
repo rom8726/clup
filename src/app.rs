@@ -20,7 +20,7 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
-        let patroni_srv = Patroni::new("10.159.83.87:8008".to_string());
+        let patroni_srv = Patroni::new("127.0.0.1:8008".to_string());
         let overview_srv = Overview::new(patroni_srv.clone());
         let cluster_srv = Cluster::new(patroni_srv.clone());
 
