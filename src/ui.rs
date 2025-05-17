@@ -83,12 +83,23 @@ impl UI {
             ])
             .split(inner_area);
 
+        self.draw_overview_header::<B>(frame, &data, chunks[0], chunks[1]);
+        self.draw_overview_table::<B>(frame, &data, chunks[2]);
+    }
+
+    fn draw_overview_header<B: Backend>(
+        &self,
+        frame: &mut Frame,
+        data: &OverviewData,
+        header_area: ratatui::layout::Rect,
+        subheader_area: ratatui::layout::Rect,
+    ) {
         let header1 = Paragraph::new(format!(
             "Scope: {}    State: {}",
             data.cluster_data.scope, data.cluster_data.patroni_data.state,
         ))
         .style(Style::default().fg(Color::Cyan));
-        frame.render_widget(header1, chunks[0]);
+        frame.render_widget(header1, header_area);
 
         let header2 = Paragraph::new(format!(
             "Host: {} ({})    Role: {}    Leader: {}",
@@ -98,8 +109,15 @@ impl UI {
             data.cluster_data.leader_node_name
         ))
         .style(Style::default().fg(Color::Cyan));
-        frame.render_widget(header2, chunks[1]);
+        frame.render_widget(header2, subheader_area);
+    }
 
+    fn draw_overview_table<B: Backend>(
+        &self,
+        frame: &mut Frame,
+        data: &OverviewData,
+        table_area: ratatui::layout::Rect,
+    ) {
         let rows: Vec<Row> = data
             .statuses
             .iter()
@@ -143,7 +161,7 @@ impl UI {
                 .title("Services Status"),
         );
 
-        frame.render_widget(combined_table, chunks[2]);
+        frame.render_widget(combined_table, table_area);
     }
 
     fn draw_cluster<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
