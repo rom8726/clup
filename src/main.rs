@@ -1,5 +1,6 @@
 mod app;
 mod ui;
+mod components;
 
 use crate::app::App;
 use crossterm::terminal::{enable_raw_mode, disable_raw_mode};
