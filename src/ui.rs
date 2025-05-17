@@ -4,7 +4,7 @@ use crate::components::logs::Logs;
 use crate::components::overview::{Overview, OverviewData};
 use ratatui::backend::Backend;
 use ratatui::style::Style;
-use ratatui::text::Line;
+use ratatui::text::{Line, Span};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -94,22 +94,32 @@ impl UI {
         header_area: ratatui::layout::Rect,
         subheader_area: ratatui::layout::Rect,
     ) {
-        let header1 = Paragraph::new(format!(
-            "Scope: {}    State: {}",
-            data.cluster_data.scope, data.cluster_data.patroni_data.state,
-        ))
-        .style(Style::default().fg(Color::Cyan));
-        frame.render_widget(header1, header_area);
+        let label_style = Style::default().fg(Color::Gray);
+        // стиль для значений
+        let value_style = Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD);
 
-        let header2 = Paragraph::new(format!(
-            "Host: {} ({})    Role: {}    Leader: {}",
-            data.hostname,
-            data.ip,
-            data.cluster_data.patroni_data.role,
-            data.cluster_data.leader_node_name
-        ))
-        .style(Style::default().fg(Color::Cyan));
-        frame.render_widget(header2, subheader_area);
+        let header1_line = Line::from(vec![
+            Span::styled("Scope: ", label_style),
+            Span::styled(&data.cluster_data.scope, value_style),
+            Span::raw("    "),
+            Span::styled("State: ", label_style),
+            Span::styled(&data.cluster_data.patroni_data.state, value_style),
+        ]);
+        frame.render_widget(Paragraph::new(header1_line), header_area);
+
+        let header2_line = Line::from(vec![
+            Span::styled("Host: ", label_style),
+            Span::styled(format!("{} ({})", data.hostname, data.ip), value_style),
+            Span::raw("    "),
+            Span::styled("Role: ", label_style),
+            Span::styled(&data.cluster_data.patroni_data.role, value_style),
+            Span::raw("    "),
+            Span::styled("Leader: ", label_style),
+            Span::styled(&data.cluster_data.leader_node_name, value_style),
+        ]);
+        frame.render_widget(Paragraph::new(header2_line), subheader_area);
     }
 
     fn draw_overview_table<B: Backend>(
