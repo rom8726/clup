@@ -15,6 +15,12 @@ pub struct ClusterInfo {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct NodesStatus {
+    pub scope: String,
+    pub members: Vec<NodeStatus>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct NodeStatus {
     pub name: String,
     pub role: String,
@@ -64,8 +70,8 @@ impl Patroni {
         let resp = ureq::get(url.as_str()).call();
 
         if let Ok(response) = resp {
-            if let Ok(data) = response.into_json::<Vec<NodeStatus>>() {
-                return data;
+            if let Ok(data) = response.into_json::<NodesStatus>() {
+                return data.members;
             }
         }
 
