@@ -129,15 +129,15 @@ impl UI {
 
         let rows: Vec<Row> = data.members.iter().map(|node| {
             let color = match node.role.as_str() {
-                "Leader" => Color::Green,
-                "Replica" => Color::Cyan,
+                "leader" => Color::Green,
+                "replica" => Color::Cyan,
                 _ => Color::Yellow,
             };
 
             let status_color = if node.state == "running" {
                 Color::Green
             } else {
-                Color::Red
+                Color::Cyan
             };
 
             Row::new(vec![
