@@ -51,7 +51,7 @@ impl UI {
         match app.current_tab {
             Tab::Overview => self.draw_overview::<B>(frame, chunks[1]),
             Tab::Cluster => self.draw_cluster::<B>(frame, chunks[1]),
-            Tab::Logs => self.draw_logs::<B>(frame, chunks[1], app.log_selected),
+            Tab::Logs => self.draw_logs::<B>(frame, chunks[1], app.log_selected, app.log_scroll, app.log_focus_right),
             Tab::Actions => self.draw_actions::<B>(frame, chunks[1]),
         }
     }
@@ -173,7 +173,14 @@ impl UI {
         frame.render_widget(table, inner_area);
     }
 
-    fn draw_logs<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect, selected: usize) {
+    fn draw_logs<B: Backend>(
+        &self,
+        frame: &mut Frame,
+        area: ratatui::layout::Rect,
+        selected: usize,
+        scroll: u16,
+        focus_right: bool,
+    ) {
         let block = Block::default()
             .title("Logs")
             .borders(Borders::ALL);
@@ -189,7 +196,7 @@ impl UI {
             .split(inner);
 
         let items: Vec<ListItem> = SERVICES.iter().enumerate().map(|(i, svc)| {
-            let style = if i == selected {
+            let style = if i == selected && !focus_right {
                 Style::default().fg(Color::Black).bg(Color::White)
             } else {
                 Style::default()
@@ -205,9 +212,19 @@ impl UI {
         let lines = self.logs_srv.read_logs(selected_service, 40);
         let text: Vec<Line> = lines.iter().map(|l| Line::from(l.clone())).collect();
 
+        let border_style = if focus_right {
+            Style::default().fg(Color::Yellow)
+        } else {
+            Style::default()
+        };
+
         let logs = Paragraph::new(text)
-            .block(Block::default().title(format!("{} log", selected_service)).borders(Borders::ALL))
-            .scroll((0, 0))
+            .block(Block::default().
+                title(format!("{} log", selected_service)).
+                borders(Borders::ALL).
+                border_style(border_style),
+            )
+            .scroll((scroll, 0))
             .wrap(Wrap { trim: false });
 
         frame.render_widget(logs, chunks[1]);

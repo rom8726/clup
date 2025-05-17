@@ -20,6 +20,8 @@ pub struct App {
     pub current_tab: Tab,
     pub ui: UI,
     pub log_selected: usize,
+    pub log_scroll: u16,
+    pub log_focus_right: bool,
 }
 
 impl PartialEq for Tab {
@@ -39,6 +41,8 @@ impl App {
             current_tab: Tab::Overview,
             ui: UI::new(overview_srv, cluster_srv, logs_srv),
             log_selected: 0,
+            log_scroll: 0,
+            log_focus_right: false,
         }
     }
 
@@ -57,14 +61,30 @@ impl App {
                             KeyCode::Char('2') => self.current_tab = Tab::Cluster,
                             KeyCode::Char('3') => self.current_tab = Tab::Logs,
                             KeyCode::Char('4') => self.current_tab = Tab::Actions,
-                            KeyCode::Down | KeyCode::Char('j') => {
-                                if self.current_tab == Tab::Logs && self.log_selected < ui::SERVICES.len() - 1 {
+                            KeyCode::Right if self.current_tab == Tab::Logs => {
+                                self.log_focus_right = true;
+                            }
+                            KeyCode::Left if self.current_tab == Tab::Logs => {
+                                self.log_focus_right = false;
+                            }
+                            KeyCode::Down | KeyCode::Char('j') if self.current_tab == Tab::Logs && !self.log_focus_right => {
+                                if self.log_selected < ui::SERVICES.len() - 1 {
                                     self.log_selected += 1;
+                                    self.log_scroll = 0;
                                 }
                             }
-                            KeyCode::Up | KeyCode::Char('k') => {
-                                if self.current_tab == Tab::Logs && self.log_selected > 0 {
+                            KeyCode::Up | KeyCode::Char('k') if self.current_tab == Tab::Logs && !self.log_focus_right => {
+                                if self.log_selected > 0 {
                                     self.log_selected -= 1;
+                                    self.log_scroll = 0;
+                                }
+                            }
+                            KeyCode::Down | KeyCode::Char('j') if self.current_tab == Tab::Logs && self.log_focus_right => {
+                                self.log_scroll += 1;
+                            }
+                            KeyCode::Up | KeyCode::Char('k') if self.current_tab == Tab::Logs && self.log_focus_right => {
+                                if self.log_scroll > 0 {
+                                    self.log_scroll -= 1;
                                 }
                             }
                             _ => {}
