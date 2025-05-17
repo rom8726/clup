@@ -24,11 +24,11 @@ impl UI {
         }
     }
 
-    pub fn draw_ui<B: Backend>(&self, f: &mut Frame, app: &App) {
+    pub fn draw_ui<B: Backend>(&self, frame: &mut Frame, app: &App) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(0)])
-            .split(f.size());
+            .split(frame.size());
 
         let tab_titles = ["1: Overview", "2: Cluster", "3: Logs", "4: Actions"];
         let tabs = Tabs::new(
@@ -41,17 +41,17 @@ impl UI {
             .block(Block::default().borders(Borders::ALL).title("Navigation"))
             .highlight_style(Style::default().fg(Color::Yellow))
             .select(app.current_tab as usize);
-        f.render_widget(tabs, chunks[0]);
+        frame.render_widget(tabs, chunks[0]);
 
         match app.current_tab {
-            Tab::Overview => self.draw_overview::<B>(f, chunks[1]),
-            Tab::Cluster => self.draw_cluster::<B>(f, chunks[1]),
-            Tab::Logs => self.draw_logs::<B>(f, chunks[1]),
-            Tab::Actions => self.draw_actions::<B>(f, chunks[1]),
+            Tab::Overview => self.draw_overview::<B>(frame, chunks[1]),
+            Tab::Cluster => self.draw_cluster::<B>(frame, chunks[1]),
+            Tab::Logs => self.draw_logs::<B>(frame, chunks[1]),
+            Tab::Actions => self.draw_actions::<B>(frame, chunks[1]),
         }
     }
 
-    fn draw_overview<B: Backend>(&self, f: &mut Frame, area: ratatui::layout::Rect) {
+    fn draw_overview<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let data: OverviewData = self.overview_srv.get_overview();
 
         let outer_block = Block::default()
@@ -60,7 +60,7 @@ impl UI {
             .border_style(Style::default().fg(Color::White));
 
         let inner_area = outer_block.inner(area);
-        f.render_widget(outer_block, area);
+        frame.render_widget(outer_block, area);
 
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -78,14 +78,14 @@ impl UI {
             data.patroni_data.scope, data.patroni_data.state,
         ))
             .style(Style::default().fg(Color::Cyan));
-        f.render_widget(header1, chunks[0]);
+        frame.render_widget(header1, chunks[0]);
 
         let header2 = Paragraph::new(format!(
             "Host: {} ({})    Role: {}    Leader: {}",
             data.hostname, data.ip, data.patroni_data.role, data.patroni_data.leader
         ))
             .style(Style::default().fg(Color::Cyan));
-        f.render_widget(header2, chunks[1]);
+        frame.render_widget(header2, chunks[1]);
 
         let rows: Vec<Row> = data
             .statuses
@@ -105,7 +105,7 @@ impl UI {
 
         let service_table = Table::new(rows, &[Constraint::Length(15), Constraint::Length(8)])
             .block(Block::default().borders(Borders::ALL).title("Services"));
-        f.render_widget(service_table, chunks[2]);
+        frame.render_widget(service_table, chunks[2]);
 
         let error_rows: Vec<Row> = data
             .errors
@@ -115,17 +115,17 @@ impl UI {
 
         let error_table = Table::new(error_rows, &[Constraint::Length(15), Constraint::Length(6)])
             .block(Block::default().borders(Borders::ALL).title("Log Errors"));
-        f.render_widget(error_table, chunks[3]);
+        frame.render_widget(error_table, chunks[3]);
     }
 
-    fn draw_cluster<B: Backend>(&self, f: &mut Frame, area: ratatui::layout::Rect) {
+    fn draw_cluster<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let data = self.cluster_srv.get_cluster_info();
 
         let outer_block = Block::default()
             .title("Cluster Status")
             .borders(Borders::ALL);
         let inner_area = outer_block.inner(area);
-        f.render_widget(outer_block, area);
+        frame.render_widget(outer_block, area);
 
         let rows: Vec<Row> = data.members.iter().map(|node| {
             let color = match node.role.as_str() {
@@ -162,16 +162,16 @@ impl UI {
                 .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
             );
 
-        f.render_widget(table, inner_area);
+        frame.render_widget(table, inner_area);
     }
 
-    fn draw_logs<B: Backend>(&self, f: &mut Frame, area: ratatui::layout::Rect) {
+    fn draw_logs<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let block = Block::default().title("Logs").borders(Borders::ALL);
-        f.render_widget(block, area);
+        frame.render_widget(block, area);
     }
 
-    fn draw_actions<B: Backend>(&self, f: &mut Frame, area: ratatui::layout::Rect) {
+    fn draw_actions<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
         let block = Block::default().title("Actions").borders(Borders::ALL);
-        f.render_widget(block, area);
+        frame.render_widget(block, area);
     }
 }
