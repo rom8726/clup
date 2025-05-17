@@ -80,11 +80,13 @@ impl UI {
                 Constraint::Length(2),
                 Constraint::Length(2),
                 Constraint::Min(5),
+                Constraint::Length(3),
             ])
             .split(inner_area);
 
         self.draw_overview_header::<B>(frame, &data, chunks[0], chunks[1]);
         self.draw_overview_table::<B>(frame, &data, chunks[2]);
+        self.draw_overview_footer::<B>(frame, &data, chunks[3]);
     }
 
     fn draw_overview_header<B: Backend>(
@@ -172,6 +174,41 @@ impl UI {
         );
 
         frame.render_widget(combined_table, table_area);
+    }
+
+    fn draw_overview_footer<B: Backend>(
+        &self,
+        frame: &mut Frame,
+        data: &OverviewData,
+        area: ratatui::layout::Rect,
+    ) {
+        let bottom_text = vec![
+            Line::from(vec![
+                Span::styled(" PgBouncer: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!("Conn {} / {}   ", 11, 30)),
+                Span::styled("Lag: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!("{:.1}s   ", 0)),
+                Span::styled(
+                    if true { "Replication OK" } else { "Replication FAILED" },
+                    Style::default().fg(if true { Color::Green } else { Color::Red }),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled(" HAProxy: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(format!(
+                    "Backend OK ({}/{})   ",
+                    3, 3
+                )),
+                Span::styled("VIP: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw("123.12.32.43"),
+            ]),
+        ];
+
+        let p = Paragraph::new(bottom_text)
+            .block(Block::default().borders(Borders::NONE))
+            .wrap(Wrap { trim: true });
+
+        frame.render_widget(p, area);
     }
 
     fn draw_cluster<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
