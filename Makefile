@@ -1,5 +1,5 @@
 TARGET = amd64-unknown-linux-gnu
-BINARY_NAME = clu
+BINARY_NAME = clup
 OUTPUT_DIR = ./target/$(TARGET)/release
 
 build:
