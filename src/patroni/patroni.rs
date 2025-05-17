@@ -70,7 +70,9 @@ impl Patroni {
         let resp = ureq::get(url.as_str()).call();
 
         if let Ok(response) = resp {
-            if let Ok(data) = response.into_json::<NodesStatus>() {
+            if let Ok(mut data) = response.into_json::<NodesStatus>() {
+                data.members.sort_by_key(|node| node.name.clone());
+
                 return data.members;
             }
         }
