@@ -97,7 +97,7 @@ impl Overview {
                         String::from_utf8_lossy(&o.stdout)
                             .trim()
                             .split('=')
-                            .nth(1) // берём всё после '='
+                            .nth(1)
                             .unwrap_or("unknown")
                             .to_string()
                     })
