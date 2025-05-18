@@ -12,3 +12,5 @@ target/
 # IDEs
 .idea/
 .vscode/
+
+pkg/root/usr/local/bin/
