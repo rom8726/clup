@@ -2,10 +2,9 @@ use crate::config::Config;
 use crate::patroni::patroni::{ClusterInfo, Patroni};
 use crate::system;
 use std::net::UdpSocket;
-use ureq;
 
-pub struct Overview {
-    pub patroni_srv: Patroni,
+pub struct OverviewService {
+    pub patroni_client: Patroni,
     pub config: Config,
 }
 
@@ -24,15 +23,16 @@ pub struct ComponentStatus {
     pub version: String,
 }
 
-impl Overview {
-    pub fn new(patroni_srv: Patroni, config: Config) -> Self {
-        Overview { patroni_srv, config }
+impl OverviewService {
+    pub fn new(patroni_client: Patroni, config: Config) -> Self {
+        OverviewService { patroni_client, config }
     }
 
+    /// Get overview data including hostname, IP, cluster info, and component statuses
     pub fn get_overview(&self) -> OverviewData {
         let hostname = self.get_hostname();
         let ip = self.get_local_ip();
-        let cluster_data = self.patroni_srv.get_cluster_info();
+        let cluster_data = self.patroni_client.get_cluster_info();
 
         // Convert service names to string slices
         let service_names = self.config.services_list();
@@ -47,6 +47,7 @@ impl Overview {
         }
     }
 
+    /// Get the hostname of the current machine
     fn get_hostname(&self) -> String {
         hostname::get()
             .unwrap_or_default()
@@ -54,6 +55,7 @@ impl Overview {
             .to_string()
     }
 
+    /// Get the local IP address
     fn get_local_ip(&self) -> String {
         UdpSocket::bind("0.0.0.0:0")
             .and_then(|sock| {
@@ -64,6 +66,7 @@ impl Overview {
             .unwrap_or_else(|_| "unknown".into())
     }
 
+    /// Collect status information for all components
     fn collect_component_statuses(&self, names: &[&str]) -> Vec<ComponentStatus> {
         names
             .iter()
@@ -84,13 +87,10 @@ impl Overview {
             .collect()
     }
 
-    fn detect_version(svc: &str) -> String {
-        system::detect_service_version(svc)
-    }
-
+    /// Fetch HAProxy backend statistics
     pub fn fetch_haproxy_backend_stats(&self) -> (u32, u32) {
         let result = system::query_haproxy_socket(&self.config.haproxy_socket, "show stat\n");
-
+        
         if let Ok(buf) = result {
             let mut up = 0u32;
             let mut total = 0u32;
@@ -116,6 +116,7 @@ impl Overview {
         }
     }
 
+    /// Detect Keepalived VIP (Virtual IP)
     pub fn detect_keepalived_vip() -> String {
         system::detect_keepalived_vip()
     }

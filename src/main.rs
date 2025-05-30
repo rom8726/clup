@@ -2,6 +2,8 @@ mod app;
 mod components;
 mod config;
 mod patroni;
+mod services;
+mod system;
 mod ui;
 
 use crate::app::App;

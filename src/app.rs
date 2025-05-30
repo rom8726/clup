@@ -1,9 +1,8 @@
-use crate::components::cluster::Cluster;
-use crate::components::logs::Logs;
-use crate::components::overview::Overview;
 use crate::config::Config;
 use crate::patroni::patroni::Patroni;
-use crate::ui;
+use crate::services::cluster::ClusterService;
+use crate::services::logs::LogsService;
+use crate::services::overview::OverviewService;
 use crate::ui::UI;
 use ratatui::Terminal;
 use ratatui::backend::Backend;
@@ -34,14 +33,14 @@ impl PartialEq for Tab {
 
 impl App {
     pub fn new(config: Config) -> Self {
-        let patroni_srv = Patroni::new(config.patroni_addr.clone());
-        let overview_srv = Overview::new(patroni_srv.clone(), config.clone());
-        let cluster_srv = Cluster::new(patroni_srv.clone());
-        let logs_srv = Logs::new();
+        let patroni_client = Patroni::new(config.patroni_addr.clone());
+        let overview_service = OverviewService::new(patroni_client.clone(), config.clone());
+        let cluster_service = ClusterService::new(patroni_client.clone());
+        let logs_service = LogsService::new();
 
         App {
             current_tab: Tab::Overview,
-            ui: UI::new(overview_srv, cluster_srv, logs_srv, config.clone()),
+            ui: UI::new(overview_service, cluster_service, logs_service, config.clone()),
             log_selected: 0,
             log_scroll: 0,
             log_focus_right: false,
