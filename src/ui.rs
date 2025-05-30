@@ -2,6 +2,7 @@ use crate::app::{App, Tab};
 use crate::components::cluster::Cluster;
 use crate::components::logs::Logs;
 use crate::components::overview::{Overview, OverviewData};
+use crate::config::Config;
 use ratatui::backend::Backend;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
@@ -13,20 +14,20 @@ use ratatui::{
 };
 use ratatui::layout::Rect;
 
-pub const SERVICES: [&str; 4] = ["patroni", "haproxy", "pgbouncer", "keepalived"];
-
 pub struct UI {
     pub overview_srv: Overview,
     pub cluster_srv: Cluster,
     pub logs_srv: Logs,
+    pub config: Config,
 }
 
 impl UI {
-    pub fn new(overview_srv: Overview, cluster_srv: Cluster, logs_srv: Logs) -> Self {
+    pub fn new(overview_srv: Overview, cluster_srv: Cluster, logs_srv: Logs, config: Config) -> Self {
         UI {
             overview_srv,
             cluster_srv,
             logs_srv,
+            config,
         }
     }
 
@@ -139,7 +140,7 @@ impl UI {
         let (ha_curr, ha_max) = self.overview_srv.fetch_haproxy_backend_stats();
 
         // Replication health
-        let repl_ok = data.cluster_data.replication_ok(10_000_000);
+        let repl_ok = data.cluster_data.replication_ok(self.config.max_replication_lag_us());
 
         // VIP
         let vip = Overview::detect_keepalived_vip();
@@ -286,7 +287,8 @@ impl UI {
             .constraints([Constraint::Length(20), Constraint::Min(1)])
             .split(inner);
 
-        let items: Vec<ListItem> = SERVICES
+        let services = self.config.services_list();
+        let items: Vec<ListItem> = services
             .iter()
             .enumerate()
             .map(|(i, svc)| {
@@ -295,7 +297,7 @@ impl UI {
                 } else {
                     Style::default()
                 };
-                ListItem::new(svc.to_string()).style(style)
+                ListItem::new(svc.clone()).style(style)
             })
             .collect();
 
@@ -303,7 +305,12 @@ impl UI {
             List::new(items).block(Block::default().title("Services").borders(Borders::ALL));
         frame.render_widget(svc_list, chunks[0]);
 
-        let selected_service = SERVICES[selected];
+        let services = self.config.services_list();
+        let selected_service = if selected < services.len() {
+            &services[selected]
+        } else {
+            "unknown"
+        };
         let lines = self.logs_srv.read_logs(selected_service, 100);
         let text: Vec<Line> = lines.iter().map(|l| Line::from(l.clone())).collect();
 

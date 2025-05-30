@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+use crate::config::Config;
 use crate::patroni::patroni::{ClusterInfo, Patroni};
 use std::net::UdpSocket;
 use std::process::Command;
@@ -7,6 +8,7 @@ use ureq;
 
 pub struct Overview {
     pub patroni_srv: Patroni,
+    pub config: Config,
 }
 
 pub struct OverviewData {
@@ -25,20 +27,19 @@ pub struct ComponentStatus {
 }
 
 impl Overview {
-    pub fn new(patroni_srv: Patroni) -> Self {
-        Overview { patroni_srv }
+    pub fn new(patroni_srv: Patroni, config: Config) -> Self {
+        Overview { patroni_srv, config }
     }
 
     pub fn get_overview(&self) -> OverviewData {
         let hostname = self.get_hostname();
         let ip = self.get_local_ip();
         let cluster_data = self.patroni_srv.get_cluster_info();
-        let components = self.collect_component_statuses(&[
-            "patroni",
-            "haproxy",
-            "pgbouncer",
-            "keepalived",
-        ]);
+
+        // Convert service names to string slices
+        let service_names = self.config.services_list();
+        let services: Vec<&str> = service_names.iter().map(|s| s.as_str()).collect();
+        let components = self.collect_component_statuses(&services);
 
         OverviewData {
             hostname,
@@ -58,7 +59,7 @@ impl Overview {
     fn get_local_ip(&self) -> String {
         UdpSocket::bind("0.0.0.0:0")
             .and_then(|sock| {
-                sock.connect("8.8.8.8:80")?;
+                sock.connect(&self.config.dns_server)?;
                 sock.local_addr()
             })
             .map(|addr| addr.ip().to_string())
@@ -102,7 +103,7 @@ impl Overview {
                             .to_string()
                     })
                     .unwrap_or_else(|_| "unknown".into());
-                
+
                 let version = Self::detect_version(svc);
 
                 ComponentStatus {
@@ -144,9 +145,7 @@ impl Overview {
     }
 
     pub fn fetch_haproxy_backend_stats(&self) -> (u32, u32) {
-        const SOCK_PATH: &str = "/var/run/haproxy/admin.sock";
-
-        let mut stream = match UnixStream::connect(SOCK_PATH) {
+        let mut stream = match UnixStream::connect(&self.config.haproxy_socket) {
             Ok(s) => s,
             Err(_) => return (0, 0),
         };

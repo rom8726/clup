@@ -1,6 +1,7 @@
 use crate::components::cluster::Cluster;
 use crate::components::logs::Logs;
 use crate::components::overview::Overview;
+use crate::config::Config;
 use crate::patroni::patroni::Patroni;
 use crate::ui;
 use crate::ui::UI;
@@ -22,6 +23,7 @@ pub struct App {
     pub log_selected: usize,
     pub log_scroll: u16,
     pub log_focus_right: bool,
+    pub config: Config,
 }
 
 impl PartialEq for Tab {
@@ -31,18 +33,19 @@ impl PartialEq for Tab {
 }
 
 impl App {
-    pub fn new() -> Self {
-        let patroni_srv = Patroni::new("127.0.0.1:8008".to_string());
-        let overview_srv = Overview::new(patroni_srv.clone());
+    pub fn new(config: Config) -> Self {
+        let patroni_srv = Patroni::new(config.patroni_addr.clone());
+        let overview_srv = Overview::new(patroni_srv.clone(), config.clone());
         let cluster_srv = Cluster::new(patroni_srv.clone());
         let logs_srv = Logs::new();
 
         App {
             current_tab: Tab::Overview,
-            ui: UI::new(overview_srv, cluster_srv, logs_srv),
+            ui: UI::new(overview_srv, cluster_srv, logs_srv, config.clone()),
             log_selected: 0,
             log_scroll: 0,
             log_focus_right: false,
+            config,
         }
     }
 
@@ -70,7 +73,8 @@ impl App {
                             KeyCode::Down | KeyCode::Char('j')
                                 if self.current_tab == Tab::Logs && !self.log_focus_right =>
                             {
-                                if self.log_selected < ui::SERVICES.len() - 1 {
+                                let services_len = self.config.services_list().len();
+                                if self.log_selected < services_len - 1 {
                                     self.log_selected += 1;
                                     self.log_scroll = 0;
                                 }
