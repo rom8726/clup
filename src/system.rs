@@ -120,14 +120,50 @@ pub fn query_haproxy_socket(socket_path: &str, command: &str) -> io::Result<Stri
 
 /// Detect Keepalived VIP
 pub fn detect_keepalived_vip() -> String {
-    let output = Command::new("ip")
-        .args(["-o", "-4", "addr", "show", "scope", "global"])
-        .output();
+    // -------- 1. Try through JSON output (`ip -j …`) ----------
+    if let Ok(out) = Command::new("ip")
+        .args(["-j", "-4", "addr", "show", "scope", "global"])
+        .output()
+    {
+        if out.status.success() {
+            if let Ok(ifaces) = serde_json::from_slice::<serde_json::Value>(&out.stdout) {
+                if let Some(arr) = ifaces.as_array() {
+                    for iface in arr {
+                        // addr_info ‒ array with IP infos
+                        if let Some(addr_arr) = iface.get("addr_info").and_then(|v| v.as_array()) {
+                            for addr in addr_arr {
+                                let label = addr.get("label").and_then(|v| v.as_str()).unwrap_or("");
+                                let flags = addr.get("flags").and_then(|v| v.as_array());
 
-    if let Ok(out) = output {
+                                // Signs of VIP
+                                let is_secondary = flags.map_or(false, |f| {
+                                    f.iter().any(|fl| fl.as_str() == Some("secondary"))
+                                });
+                                let has_colon_in_label = label.contains(':');
+
+                                if is_secondary || has_colon_in_label {
+                                    if let Some(local) = addr.get("local").and_then(|v| v.as_str()) {
+                                        return local.to_string();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Ok(out) = Command::new("ip")
+        .args(["-o", "-4", "addr", "show", "scope", "global"])
+        .output()
+    {
         if out.status.success() {
             for line in String::from_utf8_lossy(&out.stdout).lines() {
-                if line.contains(" secondary ") {
+                let has_secondary = line.contains(" secondary ");
+                let has_label_colon = line.split_whitespace().any(|w| w.contains(':'));
+
+                if has_secondary || has_label_colon {
                     if let Some(addr_field) = line.split_whitespace().nth(3) {
                         return addr_field
                             .split('/')
@@ -139,5 +175,6 @@ pub fn detect_keepalived_vip() -> String {
             }
         }
     }
+
     "-".into()
 }
