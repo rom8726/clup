@@ -1,6 +1,7 @@
 use crate::app::Tab;
 use crate::config::Config;
 use crate::patroni::patroni::ClusterInfo;
+use crate::services::actions::{Action, ActionsService};
 use crate::services::overview::{OverviewData, OverviewService};
 use crate::system;
 use crate::ui::layout;
@@ -295,7 +296,186 @@ pub fn draw_logs(
 pub fn draw_actions(
     frame: &mut Frame,
     area: Rect,
+    actions_service: &ActionsService,
+    selected: usize,
+    confirmation: bool,
+    confirmation_yes: bool,
+    target_node: &str,
+    error: &Option<String>,
+    cluster_info: &ClusterInfo,
 ) {
+    let (outer_area, chunks) = layout::create_actions_layout(area);
+
+    // Render the outer block
     let block = Block::default().title("Actions").borders(Borders::ALL);
-    frame.render_widget(block, area);
+    frame.render_widget(block, outer_area);
+
+    // Get all available actions
+    let actions = Action::all();
+
+    // Render the actions list
+    let items: Vec<ListItem> = actions
+        .iter()
+        .enumerate()
+        .map(|(i, action)| {
+            let style = if i == selected {
+                Style::default().fg(Color::Black).bg(Color::White)
+            } else {
+                Style::default()
+            };
+            ListItem::new(action.as_str()).style(style)
+        })
+        .collect();
+
+    let actions_list = List::new(items)
+        .block(Block::default().title("Available Actions").borders(Borders::ALL));
+    frame.render_widget(actions_list, chunks[0]);
+
+    // Render the action details
+    if selected < actions.len() {
+        let action = &actions[selected];
+
+        // Create details text
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled(
+                    action.as_str(),
+                    Style::default().add_modifier(Modifier::BOLD).fg(Color::Cyan),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(action.description()),
+            Line::from(""),
+        ];
+
+        // Add keyboard shortcuts
+        lines.push(Line::from(vec![
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw(": Execute action"),
+        ]));
+
+        // Add node selection for node-specific actions
+        match action {
+            Action::Switchover => {
+                lines.push(Line::from(""));
+                lines.push(Line::from("Select target node:"));
+
+                // Add node list
+                for node in &cluster_info.members {
+                    if node.role != "leader" {
+                        let selected_marker = if target_node == node.name { " (selected)" } else { "" };
+                        lines.push(Line::from(format!("- {}{}", node.name, selected_marker)));
+                    }
+                }
+
+                lines.push(Line::from(""));
+                lines.push(Line::from(vec![
+                    Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": Select next node"),
+                ]));
+            },
+            Action::Restart | Action::Reinitialize => {
+                lines.push(Line::from(""));
+                lines.push(Line::from("Select node:"));
+
+                // Add node list
+                for node in &cluster_info.members {
+                    let selected_marker = if target_node == node.name { " (selected)" } else { "" };
+                    lines.push(Line::from(format!("- {}{}", node.name, selected_marker)));
+                }
+
+                lines.push(Line::from(""));
+                lines.push(Line::from(vec![
+                    Span::styled("n", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": Select next node"),
+                ]));
+            },
+            _ => {}
+        }
+
+        // Show confirmation dialog if needed
+        if confirmation {
+            let dialog_text = match action {
+                Action::Switchover => format!("Are you sure you want to switchover to {}?", target_node),
+                Action::Restart => format!("Are you sure you want to restart {}?", target_node),
+                Action::Reinitialize => format!("Are you sure you want to reinitialize {}?", target_node),
+                Action::PauseCluster => "Are you sure you want to pause the cluster?".to_string(),
+                Action::ResumeCluster => "Are you sure you want to resume the cluster?".to_string(),
+            };
+
+            let yes_style = if confirmation_yes {
+                Style::default().fg(Color::Black).bg(Color::White)
+            } else {
+                Style::default().fg(Color::White)
+            };
+
+            let no_style = if !confirmation_yes {
+                Style::default().fg(Color::Black).bg(Color::White)
+            } else {
+                Style::default().fg(Color::White)
+            };
+
+            // Create confirmation dialog
+            let dialog = Paragraph::new(vec![
+                Line::from(dialog_text),
+                Line::from(""),
+                Line::from(vec![
+                    Span::styled("Yes", yes_style),
+                    Span::raw("   "),
+                    Span::styled("No", no_style),
+                ]),
+            ])
+            .block(Block::default().title("Confirm Action").borders(Borders::ALL))
+            .alignment(ratatui::layout::Alignment::Center);
+
+            // Calculate dialog position
+            let dialog_width = 50;
+            let dialog_height = 5;
+            let dialog_x = (area.width.saturating_sub(dialog_width)) / 2;
+            let dialog_y = (area.height.saturating_sub(dialog_height)) / 2;
+
+            let dialog_area = Rect::new(
+                area.x + dialog_x,
+                area.y + dialog_y,
+                dialog_width,
+                dialog_height,
+            );
+
+            frame.render_widget(dialog, dialog_area);
+        } else if let Some(err) = error {
+            // Show error message if there is one
+            let error_text = format!("Error: {}", err);
+
+            // Create error dialog
+            let dialog = Paragraph::new(vec![
+                Line::from(error_text),
+                Line::from(""),
+                Line::from("Press Esc to dismiss"),
+            ])
+            .block(Block::default().title("Error").borders(Borders::ALL))
+            .alignment(ratatui::layout::Alignment::Center);
+
+            // Calculate dialog position
+            let dialog_width = 50;
+            let dialog_height = 5;
+            let dialog_x = (area.width.saturating_sub(dialog_width)) / 2;
+            let dialog_y = (area.height.saturating_sub(dialog_height)) / 2;
+
+            let dialog_area = Rect::new(
+                area.x + dialog_x,
+                area.y + dialog_y,
+                dialog_width,
+                dialog_height,
+            );
+
+            frame.render_widget(dialog, dialog_area);
+        } else {
+            // Render the details in the right panel
+            let details = Paragraph::new(lines)
+                .block(Block::default().title("Details").borders(Borders::ALL))
+                .wrap(Wrap { trim: true });
+
+            frame.render_widget(details, chunks[1]);
+        }
+    }
 }

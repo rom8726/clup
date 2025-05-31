@@ -45,7 +45,7 @@ impl Patroni {
         Patroni { addr }
     }
 
-    fn base_url(&self) -> String {
+    pub fn base_url(&self) -> String {
         "http://".to_string() + self.addr.clone().as_str()
     }
 

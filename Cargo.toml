@@ -13,3 +13,10 @@ anyhow = "1.0"
 hostname = "0.4"
 ureq = { version = "2.12", features = ["json"] }
 clap = { version = "4.5", features = ["derive"] }
+
+#[build]
+#target = "aarch64-unknown-linux-gnu"
+#
+#[target.aarch64-unknown-linux-gnu]
+#linker = "aarch64-linux-gnu-gcc"
+#ar = "aarch64-linux-gnu-ar"

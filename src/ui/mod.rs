@@ -1,5 +1,6 @@
 use crate::app::{App, Tab};
 use crate::config::Config;
+use crate::services::actions::ActionsService;
 use crate::services::cluster::ClusterService;
 use crate::services::logs::LogsService;
 use crate::services::overview::{OverviewData, OverviewService};
@@ -13,15 +14,20 @@ pub struct UI {
     pub overview_service: OverviewService,
     pub cluster_service: ClusterService,
     pub logs_service: LogsService,
+    pub actions_service: ActionsService,
     pub config: Config,
 }
 
 impl UI {
     pub fn new(overview_service: OverviewService, cluster_service: ClusterService, logs_service: LogsService, config: Config) -> Self {
+        // Create actions service using the same Patroni client as cluster service
+        let actions_service = ActionsService::new(cluster_service.patroni_client.clone());
+
         UI {
             overview_service,
             cluster_service,
             logs_service,
+            actions_service,
             config,
         }
     }
@@ -44,7 +50,7 @@ impl UI {
                 app.log_scroll,
                 app.log_focus_right,
             ),
-            Tab::Actions => self.draw_actions::<B>(frame, chunks[1]),
+            Tab::Actions => self.draw_actions::<B>(frame, chunks[1], app),
         }
     }
 
@@ -77,7 +83,18 @@ impl UI {
         render::draw_logs(frame, area, &services, selected, scroll, focus_right, &lines, selected_service);
     }
 
-    fn draw_actions<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect) {
-        render::draw_actions(frame, area);
+    fn draw_actions<B: Backend>(&self, frame: &mut Frame, area: ratatui::layout::Rect, app: &App) {
+        let cluster_info = self.actions_service.get_cluster_info();
+        render::draw_actions(
+            frame, 
+            area, 
+            &self.actions_service,
+            app.action_selected,
+            app.action_confirmation,
+            app.action_confirmation_yes,
+            &app.action_target_node,
+            &app.action_error,
+            &cluster_info
+        );
     }
 }

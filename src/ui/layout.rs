@@ -65,3 +65,20 @@ pub fn create_logs_layout(area: Rect) -> (Rect, Vec<Rect>) {
 
     (area, chunks)
 }
+
+/// Create the actions layout
+pub fn create_actions_layout(area: Rect) -> (Rect, Vec<Rect>) {
+    let block = ratatui::widgets::Block::default()
+        .title("Actions")
+        .borders(ratatui::widgets::Borders::ALL);
+
+    let inner = block.inner(area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(30), Constraint::Min(1)])
+        .split(inner)
+        .to_vec();
+
+    (area, chunks)
+}
